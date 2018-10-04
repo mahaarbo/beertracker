@@ -11,25 +11,33 @@
 #define LONG_BUF_SZ (10*SHORT_BUF_SZ)
 std::list<int> short_buf;
 std::list<int> long_buf;
+int bubble_counter = 0;
 
 #define DHT_PIN 4
 DHT dht(DHT_PIN, DHT11);
 
 AdafruitIO_WiFi aio(aio_user, aio_key, wifi_ssid, wifi_password);
+AdafruitIO_Feed *aio_temperature = aio.feed("beer.temperature");
+AdafruitIO_Feed *aio_humidity = aio.feed("beer.humidity");
+AdafruitIO_Feed *aio_bubbles = aio.feed("beer.bubbles");
 
-int print_counter = 1;
+#define AIO_LOOP_RATE_MS 20000
+#define SOUND_SENSOR_LOOP_RATE_MS 5
+#define SOUND_SENSOR_LOOP_MULTIPLIER (AIO_LOOP_RATE_MS/SOUND_SENSOR_LOOP_RATE_MS)
+int loop_counter = 0;
 
-double calc_mean(const std::list<int>& l) {
+float calc_mean(const std::list<int>& l) {
   int sum = std::accumulate(l.begin(), l.end(), 0);
   int N = l.size();
-  return static_cast<double>(sum)/N;
+  return static_cast<float>(sum)/N;
 }
 
 bool bubble_detection(std::list<int>& sbuff, const std::list<int>& lbuff) {
-  int bubble_threshold = 2;
+  float bubble_threshold = 3.0;
   std::list<int>::iterator max_val = std::max_element(sbuff.begin(), sbuff.end());
-  double long_mean = calc_mean(lbuff);
-  bool bubble_test = (*max_val - long_mean) > bubble_threshold;
+  float long_mean = calc_mean(lbuff);
+  Serial.printf("bubble diff: %.1f\n", static_cast<float>(*max_val) - long_mean);
+  bool bubble_test = (static_cast<float>(*max_val) - long_mean) > bubble_threshold;
   return bubble_test;
 }
 
@@ -64,22 +72,32 @@ void loop() {
   short_buf.push_back(sound_sensor_val);
   long_buf.pop_front();
   long_buf.push_back(sound_sensor_val);
+
+  if(loop_counter % SHORT_BUF_SZ == 0) {
+    bool bubble = bubble_detection(short_buf, long_buf);
+    if(bubble) {
+      Serial.println("BUBBLE!!!!");
+      bubble_counter++;
+    }
+  }
   
-  if(print_counter < SHORT_BUF_SZ) {
-    print_counter++;
+  if(loop_counter < SOUND_SENSOR_LOOP_MULTIPLIER) {
+    loop_counter++;
   } else {
+    aio.run();
+    Serial.println(aio.statusText());
+    loop_counter = 0;
     float humidity = dht.readHumidity();
     float temperature = dht.readTemperature();
     if(isnan(humidity) || isnan(temperature)) {
       Serial.println("error reading temp/humid");
     } else {
       Serial.printf("temp: %.1f, hum: %.1f\n", temperature, humidity);
-    }
-    print_counter = 1;
-    bool bubble = bubble_detection(short_buf, long_buf);
-    if(bubble) {
-      Serial.println("BUBBLE!");
+      aio_temperature->save(temperature);
+      aio_humidity->save(humidity);
+      aio_bubbles->save(bubble_counter);
+      bubble_counter = 0;
     }
   }
-  delay(5);
+  delay(SOUND_SENSOR_LOOP_RATE_MS);
 }
