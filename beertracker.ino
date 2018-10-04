@@ -1,10 +1,10 @@
 #include <ESP8266WiFi.h>
-#include <WiFiClient.h>
+#include <AdafruitIO_WiFi.h>
 #include <DHT.h>
 #include <list>
 #include <algorithm>
 
-#include "wifi_credentials.h"
+#include "aio_config.h"
 
 #define SOUND_SENSOR_PIN 2
 #define SHORT_BUF_SZ 100
@@ -14,6 +14,8 @@ std::list<int> long_buf;
 
 #define DHT_PIN 4
 DHT dht(DHT_PIN, DHT11);
+
+AdafruitIO_WiFi aio(aio_user, aio_key, wifi_ssid, wifi_password);
 
 int print_counter = 1;
 
@@ -44,14 +46,13 @@ void setup() {
 
   dht.begin();
 
-  Serial.printf("Connecting to ssid: %s\n", wifi_ssid);
-  WiFi.begin(wifi_ssid, wifi_password);
-  while(WiFi.status() != WL_CONNECTED) {
-    delay(500);
+  aio.connect();
+  while(aio.status() < AIO_CONNECTED) {
     Serial.print(".");
+    delay(500);
   }
-  Serial.print("WiFi connected, IP: ");
-  Serial.println(WiFi.localIP());
+  Serial.println();
+  Serial.println(aio.statusText());
   
   delay(200);
   Serial.println("Setup done.");
