@@ -1,4 +1,3 @@
-// WiFi Initialize
 #include <ESP8266WiFi.h> // board specific
 #include <WiFiClient.h> // Arduino library for wificlients
 #include <list>
