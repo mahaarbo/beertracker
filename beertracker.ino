@@ -21,9 +21,10 @@ AdafruitIO_Feed *aio_temperature = aio.feed("beer.temperature");
 AdafruitIO_Feed *aio_humidity = aio.feed("beer.humidity");
 AdafruitIO_Feed *aio_bubbles = aio.feed("beer.bubbles");
 
-#define AIO_LOOP_RATE_MS 20000
-#define SOUND_SENSOR_LOOP_RATE_MS 5
-#define SOUND_SENSOR_LOOP_MULTIPLIER (AIO_LOOP_RATE_MS/SOUND_SENSOR_LOOP_RATE_MS)
+#define AIO_LOOP_DELAY_S 60
+#define AIO_LOOP_DELAY_MS (AIO_LOOP_DELAY_S*1000)
+#define SOUND_SENSOR_LOOP_DELAY_MS 5
+#define SOUND_SENSOR_LOOP_MULTIPLIER (AIO_LOOP_DELAY_MS/SOUND_SENSOR_LOOP_DELAY_MS)
 int loop_counter = 0;
 
 float calc_mean(const std::list<int>& l) {
@@ -92,12 +93,13 @@ void loop() {
     if(isnan(humidity) || isnan(temperature)) {
       Serial.println("error reading temp/humid");
     } else {
-      Serial.printf("temp: %.1f, hum: %.1f\n", temperature, humidity);
       aio_temperature->save(temperature);
       aio_humidity->save(humidity);
-      aio_bubbles->save(bubble_counter);
+      float bubble_rate = static_cast<float>(bubble_counter)/(60.0/AIO_LOOP_DELAY_S);
+      aio_bubbles->save(bubble_rate);
       bubble_counter = 0;
+      Serial.printf("temp: %.1f, hum: %.1f, bubble rate: %.1f\n", temperature, humidity, bubble_rate);
     }
   }
-  delay(SOUND_SENSOR_LOOP_RATE_MS);
+  delay(SOUND_SENSOR_LOOP_DELAY_MS);
 }
