@@ -1,9 +1,10 @@
 #include <ESP8266WiFi.h>
 #include <WiFiClient.h>
 #include <DHT.h>
-#include <DHT_U.h>
 #include <list>
 #include <algorithm>
+
+#include "wifi_credentials.h"
 
 #define SOUND_SENSOR_PIN 2
 #define SHORT_BUF_SZ 100
@@ -42,6 +43,15 @@ void setup() {
   }
 
   dht.begin();
+
+  Serial.printf("Connecting to ssid: %s\n", wifi_ssid);
+  WiFi.begin(wifi_ssid, wifi_password);
+  while(WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.print("WiFi connected, IP: ");
+  Serial.println(WiFi.localIP());
   
   delay(200);
   Serial.println("Setup done.");
